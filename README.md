@@ -26,7 +26,7 @@ Gradle
 
 Java 8:
 ```groovy
-compile ('cc.youchain:core:1.1.0')
+compile ('cc.youchain:core:1.1.5')
 ```
 启动客户端
 ------
