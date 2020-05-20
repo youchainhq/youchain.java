@@ -1,0 +1,22 @@
+plugins {
+    id 'java'
+}
+
+group 'cc.youchain'
+version '1.0.0'
+
+sourceCompatibility = 1.8
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    testCompile project(path: ':crypto', configuration: 'testArtifacts'),
+            "nl.jqno.equalsverifier:equalsverifier:$equalsverifierVersion",
+            "ch.qos.logback:logback-classic:$logbackVersion",
+            group: 'junit', name: 'junit', version: '4.12'
+    compile project(':crypto'),
+            project(':core'),
+            "org.slf4j:slf4j-api:$slf4jVersion"
+}

@@ -1,0 +1,260 @@
+buildscript {
+    ext.bouncycastleVersion = '1.60'
+    ext.jacksonVersion = '2.8.5'
+    ext.javapoetVersion = '1.7.0'
+    ext.jnr_unixsocketVersion = '0.21'
+    ext.okhttpVersion = '3.8.1'
+    ext.rxjavaVersion = '2.2.2'
+    ext.slf4jVersion = '1.7.25'
+    ext.javaWebSocketVersion = '1.3.8'
+    ext.picocliVersion = '3.0.0'
+
+    // test dependencies
+    ext.equalsverifierVersion = '2.1.7'
+    ext.junitVersion = '4.11'
+    ext.junitBenchmarkVersion = '0.7.2'
+    ext.logbackVersion = '1.2.3'
+    ext.mockitoVersion = '1.10.19'
+    ext.hutoolVersion = '5.2.0'
+    ext.lombokVersion = "1.18.8"
+
+    repositories {
+        mavenCentral()
+    }
+
+    dependencies {
+//        classpath 'io.codearte.gradle.nexus:gradle-nexus-staging-plugin:0.5.3'
+        classpath 'com.github.jengelman.gradle.plugins:shadow:1.2.4'
+    }
+}
+
+plugins {
+    // Required for JFrog Artifactory repository
+    id 'jacoco'
+    // Required for Maven Nexus repository
+    id 'maven'
+    id 'maven-publish'
+    id 'signing'
+    id 'idea'
+}
+
+apply plugin: 'java'
+apply plugin: 'idea'
+// should only be applied to the root project, see
+// https://github.com/Codearte/gradle-nexus-staging-plugin#multi-project-build
+//apply plugin: 'io.codearte.nexus-staging'
+apply plugin: 'jacoco'
+apply plugin: 'maven-publish'
+apply plugin: 'signing'
+
+description 'YOUChain base project'
+
+def parseLocalProperties(){
+    File file = rootProject.file('local.properties')
+    if(file.exists()){
+        InputStream inputStream = rootProject.file('local.properties').newDataInputStream();
+        Properties properties = new Properties()
+        properties.load(inputStream)
+        if (properties.containsKey("signing.keyId")){
+            ext.'signing.keyId' = properties.getProperty("signing.keyId")
+        }
+        if (properties.containsKey("signing.password")){
+            ext.'signing.password' = properties.getProperty("signing.password")
+        }
+        if (properties.containsKey("signing.secretKeyRingFile")){
+            ext.'signing.secretKeyRingFile' = properties.getProperty("signing.secretKeyRingFile")
+        }
+        if (properties.containsKey("sonatypeUsername")){
+            ext.'sonatypeUsername' = properties.getProperty("sonatypeUsername")
+        }
+        if (properties.containsKey("sonatypePassword")){
+            ext.'sonatypePassword' = properties.getProperty("sonatypePassword")
+        }
+    }
+}
+
+ext.isReleaseVersion = !version.endsWith("SNAPSHOT")
+def sonatypeRepositoryUrl
+if (isReleaseVersion) {
+    println 'RELEASE BUILD'
+    sonatypeRepositoryUrl = "https://oss.sonatype.org/service/local/staging/deploy/maven2/"
+} else {
+    println 'snapshots BUILD'
+    sonatypeRepositoryUrl = "https://oss.sonatype.org/content/repositories/snapshots/"
+}
+
+allprojects {
+
+    sourceCompatibility = 1.8
+    targetCompatibility = 1.8
+
+    apply plugin: 'java'
+    apply plugin: 'jacoco'
+    apply plugin: 'maven-publish'
+    apply plugin: 'signing'
+
+    repositories {
+        mavenCentral()
+//        maven{ url 'http://maven.aliyun.com/nexus/content/groups/public/'} // 替换maven以下载部分包
+    }
+
+    parseLocalProperties();
+
+    // We don't want any compiler warnings
+    compileJava {
+        options.compilerArgs << "-Xlint:unchecked" << "-Xlint:deprecation"
+    }
+//    compileTestJava {
+//        options.compilerArgs << "-Xlint:unchecked" << "-Xlint:deprecation"
+//    }
+
+    javadoc {
+        options.encoding = 'UTF-8'
+        options.charSet = 'UTF-8'
+    }
+
+    jacoco {
+        toolVersion = '0.7.7.201606060606' // See http://www.eclemma.org/jacoco/.
+    }
+
+    jacocoTestReport {
+        reports {
+            xml.enabled true
+        }
+    }
+
+    tasks.withType(Test) {
+        reports.html.destination = file("${reporting.baseDir}/${name}")
+    }
+
+}
+
+subprojects {
+    apply plugin: 'maven'
+    apply plugin: 'java'
+    apply plugin: 'maven-publish'
+    apply plugin: 'signing'
+
+    dependencies {
+        testCompile "junit:junit:$junitVersion",
+                "org.mockito:mockito-core:$mockitoVersion"
+    }
+}
+
+configure(subprojects.findAll { it.name != 'integration' }) {
+    apply plugin: 'maven'
+    apply plugin: 'maven-publish'
+    apply plugin: 'signing'
+
+    task javadocJar(type: Jar) {
+        from javadoc
+        classifier = 'javadoc'
+    }
+
+    task sourcesJar(type: Jar) {
+        from sourceSets.main.allSource
+        classifier = 'sources'
+    }
+
+    artifacts {
+        archives sourcesJar, javadocJar
+    }
+
+    signing {
+//        sign configurations.archives
+    }
+
+    publishing {
+        publications {
+            mavenJava(MavenPublication) {
+                from components.java
+
+                artifact sourcesJar {
+                    classifier 'sources'
+                }
+
+                artifact javadocJar {
+                    classifier 'javadoc'
+                }
+
+                pom {
+                    name = "youchain.java"
+                    description = "YOUChain Common library in JAVA"
+                    url = "https://gitlab.iyouchain.com/youchain/youchain.java"
+                    licenses {
+                        license {
+                            name = "The Apache License, Version 2.0"
+                            url = "http://www.apache.org/licenses/LICENSE-2.0.txt"
+                            distribution = "repo"
+                        }
+                    }
+                    developers {
+                        developer {
+                            id = "youchain"
+                            name = "YOUChain"
+                            email = "dev@youchain.cc"
+                        }
+                    }
+                    scm {
+                        connection = "scm:git:https://gitlab.iyouchain.com/youchain/youchain.java.git"
+                        developerConnection = "scm:git@gitlab.iyouchain.com/youchain/youchain.java.git"
+                        url = "https://gitlab.iyouchain.com/youchain/youchain.java.git"
+                    }
+                }
+            }
+        }
+        // 定义发布到哪里
+        repositories {
+            maven {
+                credentials {
+                    // 这里就是之前在issues.sonatype.org注册的账号
+                    username sonatypeUsername
+                    password sonatypePassword
+                }
+            }
+        }
+    }
+
+    uploadArchives {
+        repositories {
+            mavenDeployer {
+                beforeDeployment { MavenDeployment deployment -> signing.signPom(deployment) }
+                //指定项目部署到的中央库地址，UserName和Password就是Part 1中注册的账号。
+                repository(url: sonatypeRepositoryUrl) {
+                    authentication(userName: sonatypeUsername, password: sonatypePassword)
+                }
+
+                pom.project {
+                    name "youchain.java"
+                    packaging 'jar'
+                    description 'YOUChain Common library in JAVA.'
+                    url 'https://gitlab.iyouchain.com/youchain/youchain.java'
+
+                    scm {
+                        url 'scm:git@gitlab.iyouchain.com:20022/youchain/youchain.java.git'
+                        connection 'scm:git@gitlab.iyouchain.com:20022/youchain/youchain.java.git'
+                        developerConnection 'scm:git@gitlab.iyouchain.com:20022/youchain/youchain.java.git'
+                    }
+
+                    licenses {
+                        license {
+                            name 'The Apache Software License, Version 2.0'
+                            url 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+                            distribution 'repo'
+                        }
+                    }
+
+                    developers {
+                        developer {
+                            id 'youchain'
+                            name 'YOUChain'
+                            email "dev@youchain.cc"
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+}
+

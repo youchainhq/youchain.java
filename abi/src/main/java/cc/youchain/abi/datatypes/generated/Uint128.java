@@ -1,0 +1,21 @@
+package cc.youchain.abi.datatypes.generated;
+
+import cc.youchain.abi.datatypes.Uint;
+import java.math.BigInteger;
+
+/**
+ * Auto generated code.
+ * <p><strong>Do not modifiy!</strong>
+ * <p>Please use cc.youchain.codegen.AbiTypesGenerator to update.
+ */
+public class Uint128 extends Uint {
+    public static final Uint128 DEFAULT = new Uint128(BigInteger.ZERO);
+
+    public Uint128(BigInteger value) {
+        super(128, value);
+    }
+
+    public Uint128(long value) {
+        this(BigInteger.valueOf(value));
+    }
+}
